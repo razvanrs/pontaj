@@ -59,6 +59,7 @@ Route::middleware([
     // EMPLOYEE SCHEDULE
     Route::get('/planificare-personal', [PlanificarePersonalController::class, 'index'])->name('employeeSchedule');
     Route::post('/adauga-activitate-personal', [PlanificarePersonalController::class, 'addEmployeeActivity'])->name('frm.add.employeeSchedule');
+    Route::post('/adauga-activitate-personal-bulk', [PlanificarePersonalController::class, 'addEmployeeActivityBulk']);
     Route::post('/actualizeaza-activitate-personal', [PlanificarePersonalController::class, 'updateEmployeeActivity'])->name('frm.update.employeeSchedule');
     Route::post('/sterge-activitate-personal', [PlanificarePersonalController::class, 'deleteEmployeeActivity'])->name('frm.delete.employeeSchedule');
     Route::post('/employees/by-business-unit-group', [PlanificarePersonalController::class, 'getEmployeesByBusinessUnitGroup'])->name('lists.employees');

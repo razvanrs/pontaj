@@ -122,16 +122,73 @@
                                 <p class="text-base">Adaugă mai jos detaliile necesare.</p>
 
                                 <form @submit.prevent="submit" class="grid sm:grid-cols-2 gap-x-3.5 gap-y-5 mt-5">
-                                    <div class="space-y-2">
-                                        <InputLabel value="Data începerii activității" />
-                                        <DatePicker v-model="form.dateStart" dateFormat="dd.mm.yy" :minDate="new Date(DateTime.now().startOf('year').toFormat('yyyy-MM-dd HH:mm:ss'))" :stepMinute="1" :maxDate="new Date(new Date().getFullYear(), 11, 31)" showTime hourFormat="24" placeholder="Alege" class="w-full md:w-14rem" @update:modelValue="updateDateEnd"/>
-                                        <div v-if="$page.props.errors.dateStart" class="text-red-500 !mt-1"> {{ $page.props.errors.dateStart }} </div>
+
+                                    <!-- Conditionally render either single date or range DatePicker -->
+                                    <template v-if="!choosePeriod">
+                                        <div class="space-y-2">
+                                            <InputLabel value="Data începerii activității" />
+                                            <DatePicker
+                                                v-model="form.dateStart"
+                                                dateFormat="dd.mm.yy"
+                                                :minDate="new Date(DateTime.now().startOf('year').toFormat('yyyy-MM-dd HH:mm:ss'))"
+                                                :stepMinute="1"
+                                                :maxDate="new Date(new Date().getFullYear(), 11, 31)"
+                                                showTime
+                                                hourFormat="24"
+                                                placeholder="Alege"
+                                                class="w-full md:w-14rem"
+                                                @update:modelValue="updateDateEnd"
+                                            />
+                                            <div v-if="$page.props.errors.dateStart" class="text-red-500 !mt-1">
+                                                {{ $page.props.errors.dateStart }}
+                                            </div>
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            <InputLabel value="Data finalizării activității" />
+                                            <DatePicker
+                                                v-model="form.dateEnd"
+                                                dateFormat="dd.mm.yy"
+                                                :minDate="form.dateStart"
+                                                :maxDate="new Date(new Date().getFullYear(), 11, 31)"
+                                                :stepMinute="1"
+                                                showTime
+                                                hourFormat="24"
+                                                placeholder="Alege"
+                                                class="w-full md:w-14rem"
+                                            />
+                                            <div v-if="$page.props.errors.dateEnd" class="text-red-500 !mt-1">
+                                                {{ $page.props.errors.dateEnd }}
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- Range DatePicker when checkbox is checked -->
+                                    <div v-else class="sm:col-span-2 space-y-2">
+                                        <InputLabel value="Perioadă selectată" />
+                                        <DatePicker
+                                            v-model="periodDates"
+                                            selectionMode="range"
+                                            placeholder="Selectează intervalul"
+                                            dateFormat="dd.mm.yy"
+                                            class="w-full placeholder:normal-case"
+                                        />
                                     </div>
 
-                                    <div class="space-y-2">
-                                        <InputLabel value="Data finalizării activității" />
-                                        <DatePicker v-model="form.dateEnd" dateFormat="dd.mm.yy" :minDate="form.dateStart" :maxDate="new Date(new Date().getFullYear(), 11, 31)" :stepMinute="1" showTime hourFormat="24" placeholder="Alege" class="w-full md:w-14rem"/>
-                                        <div v-if="$page.props.errors.dateEnd" class="text-red-500 !mt-1"> {{ $page.props.errors.dateEnd }} </div>
+                                    <div class="sm:col-span-2 flex items-center">
+                                        <Switch
+                                            v-model="choosePeriod"
+                                            :class="choosePeriod ? 'bg-blue-600' : 'bg-gray-300'"
+                                            class="relative inline-flex h-5 w-10 items-center rounded-full transition duration-200"
+                                        >
+                                            <span
+                                                class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition duration-200"
+                                                :class="choosePeriod ? 'translate-x-5' : 'translate-x-1'"
+                                            />
+                                        </Switch>
+                                        <label for="choose-period" class="text-sm ml-2">
+                                            Activează pentru a adăuga o perioadă
+                                        </label>
                                     </div>
 
                                     <div class="space-y-2 sm:col-span-2">
@@ -246,6 +303,7 @@ import { useToast } from 'vue-toastification'
 import { ClockIcon } from '@heroicons/vue/24/solid'
 import { ExclamationCircleIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useConfirm } from 'primevue/useconfirm'
+import { Switch } from '@headlessui/vue'
 
 import Header from '@/Components/shared/c-page-header.vue'
 import SidebarMenu from '@/Components/partials/c-sidebar-menu.vue'
@@ -281,6 +339,9 @@ const currentViewDates = ref({
 })
 
 const calendarEvents = ref([])
+const choosePeriod = ref(false)
+const periodDates = ref(null)
+
 const isEditMode = ref(false)
 const calendarInteraction = ref(null)
 const visible = ref(false)
@@ -401,52 +462,101 @@ function showPlanifica () {
 
 function submit () {
     console.log('submit')
+    if (choosePeriod.value && periodDates.value) {
+        submitBulkSchedule()
+    } else {
+        const dateS = new Date(form.dateStart)
+        const formattedDateS = dateS.toLocaleString('ro-RO', { timeZoneName: 'short' })
 
-    const dateS = new Date(form.dateStart)
-    const formattedDateS = dateS.toLocaleString('ro-RO', { timeZoneName: 'short' })
+        const dateF = new Date(form.dateEnd)
+        const formattedDateF = dateF.toLocaleString('ro-RO', { timeZoneName: 'short' })
 
-    const dateF = new Date(form.dateEnd)
-    const formattedDateF = dateF.toLocaleString('ro-RO', { timeZoneName: 'short' })
+        form
+            .transform((data) => ({
+                ...data,
+                employee: filterEmployee.value,
+                dateStart: formattedDateS,
+                dateEnd: formattedDateF,
+            }))
+            .post('/adauga-activitate-personal', {
+                preserveScroll: true,
+                onSuccess: () => {
+                    form.reset('scheduleStatus')
+                    form.reset('employee')
+                    form.reset('displayCode')
 
-    form
-        .transform((data) => ({
-            ...data,
-            employee: filterEmployee.value,
-            dateStart: formattedDateS,
-            dateEnd: formattedDateF,
-        }))
-        .post('/adauga-activitate-personal', {
-            preserveScroll: true,
-            onSuccess: () => {
-                form.reset('scheduleStatus')
-                form.reset('employee')
-                form.reset('displayCode')
+                    form.dateStart = new Date(DateTime.now().set({
+                        hour: 8,
+                        minute: 0,
+                        second: 0,
+                        millisecond: 0,
+                    }).toFormat('yyyy-MM-dd HH:mm:ss'))
 
-                form.dateStart = new Date(DateTime.now().set({
-                    hour: 8,
-                    minute: 0,
-                    second: 0,
-                    millisecond: 0,
-                }).toFormat('yyyy-MM-dd HH:mm:ss'))
+                    form.dateEnd = new Date(DateTime.now().set({
+                        hour: 16,
+                        minute: 0,
+                        second: 0,
+                        millisecond: 0,
+                    }).toFormat('yyyy-MM-dd HH:mm:ss'))
 
-                form.dateEnd = new Date(DateTime.now().set({
-                    hour: 16,
-                    minute: 0,
-                    second: 0,
-                    millisecond: 0,
-                }).toFormat('yyyy-MM-dd HH:mm:ss'))
+                    visible.value = false
 
-                visible.value = false
+                    refresh()
 
-                refresh()
+                    if (form.formAction === 'add') {
+                        toast.success('Evenimentul a fost creat cu succes!', {
+                            timeout: 2000,
+                            position: 'bottom-right',
+                        })
+                    }
+                },
+            })
+    }
+}
 
-                if (form.formAction === 'add') {
-                    toast.success('Evenimentul a fost creat cu succes!', {
-                        timeout: 2000,
-                        position: 'bottom-right',
-                    })
-                }
-            },
+function submitBulkSchedule () {
+    // Validate input
+    if (!periodDates.value || !periodDates.value[0] || !periodDates.value[1]) {
+        toast.error('Vă rugăm să selectați o perioadă validă!', {
+            timeout: 2000,
+            position: 'bottom-right',
+        })
+        return
+    }
+
+    // Prepare bulk schedule data
+    const bulkScheduleData = {
+        formAction: 'bulk', // Add this to distinguish bulk action
+        scheduleStatus: form.scheduleStatus,
+        employee: filterEmployee.value,
+        startDate: periodDates.value[0].toLocaleString('ro-RO', { timeZoneName: 'short' }),
+        endDate: periodDates.value[1].toLocaleString('ro-RO', { timeZoneName: 'short' }),
+        displayCode: form.displayCode,
+    }
+
+    // Send request to new backend endpoint
+    axios.post('/adauga-activitate-personal-bulk', bulkScheduleData)
+        .then(response => {
+            toast.success('Programare în masă realizată cu succes!', {
+                timeout: 2000,
+                position: 'bottom-right',
+            })
+
+            // Reset form and UI
+            form.reset('scheduleStatus')
+            form.reset('employee')
+            form.reset('displayCode')
+            choosePeriod.value = false
+            periodDates.value = null
+
+            visible.value = false
+            refresh() // Refresh calendar events
+        })
+        .catch(error => {
+            toast.error('Eroare la programarea în masă: ' + (error.response?.data?.message || error.message), {
+                timeout: 2000,
+                position: 'bottom-right',
+            })
         })
 }
 
@@ -617,3 +727,10 @@ const datesSetEvent = (event) => {
 }
 
 </script>
+
+<style>
+input::placeholder {
+    text-transform: none;
+    font-size:0.875rem;
+}
+</style>

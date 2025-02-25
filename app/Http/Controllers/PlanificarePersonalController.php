@@ -172,6 +172,77 @@ class PlanificarePersonalController extends Controller
         return to_route('employeeSchedule');
     }
 
+    public function addEmployeeActivityBulk(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'scheduleStatus' => ['required'],
+            'employee' => ['required'],
+            'startDate' => ['required', 'date'],
+            'endDate' => ['required', 'date', 'after_or_equal:startDate'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Parse dates
+        $startDate = Carbon::parse($request->startDate);
+        $endDate = Carbon::parse($request->endDate);
+
+        // Prepare to track created schedules
+        $createdSchedules = [];
+
+        // Iterate through each day in the range
+        while ($startDate->lte($endDate)) {
+            // Skip weekends if needed
+            if (!$startDate->isWeekend()) {
+                // Set default work hours
+                $dayStart = $startDate->copy()->setHour(8)->setMinute(0);
+                $dayEnd = $startDate->copy()->setHour(16)->setMinute(0);
+
+                // Check for overlapping events
+                $overlappingEvents = EmployeeSchedule::where('employee_id', $request->employee['id'])
+                    ->where(function ($query) use ($dayStart, $dayEnd) {
+                        $query->where(function ($q) use ($dayStart, $dayEnd) {
+                            $q->where('date_start', '<=', $dayStart)
+                            ->where('date_finish', '>', $dayStart);
+                        })
+                        ->orWhere(function ($q) use ($dayStart, $dayEnd) {
+                            $q->where('date_start', '<', $dayEnd)
+                            ->where('date_finish', '>=', $dayEnd);
+                        });
+                    })
+                    ->exists();
+
+                if (!$overlappingEvents) {
+                    $employeeSchedule = new EmployeeSchedule();
+                    $employeeSchedule->schedule_status_id = $request->scheduleStatus['id'];
+                    $employeeSchedule->employee_id = $request->employee['id'];
+                    $employeeSchedule->year_id = Year::where('code', $dayStart->year)->first()->id;
+                    $employeeSchedule->week_id = Week::where('code', $dayStart->weekOfYear)->first()->id;
+                    $employeeSchedule->day_id = Day::where('code', $dayStart->day)->first()->id;
+                    $employeeSchedule->date_start = $dayStart->format("Y-m-d H:i:s");
+                    $employeeSchedule->date_finish = $dayEnd->format("Y-m-d H:i:s");
+                    $employeeSchedule->total_minutes = $dayEnd->diffInMinutes($dayStart);
+                    $employeeSchedule->display_code = $request->displayCode;
+                    $employeeSchedule->save();
+
+                    $createdSchedules[] = $employeeSchedule;
+                }
+            }
+
+            // Move to next day
+            $startDate->addDay();
+        }
+
+        return response()->json([
+            'message' => 'Bulk scheduling successful',
+            'created_schedules' => count($createdSchedules)
+        ]);
+    }
+
     public function getEvents(Request $request){
 
         ray($request->input());
