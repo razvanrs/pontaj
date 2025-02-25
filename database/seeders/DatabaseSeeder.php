@@ -1,0 +1,31 @@
+<?php
+
+namespace Database\Seeders;
+
+// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
+
+class DatabaseSeeder extends Seeder
+{
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
+    {
+        $this->call([
+            // Nomenclatoare
+            EthnicitySeeder::class,
+            LanguageSeeder::class,
+            SexSeeder::class,
+            MilitaryRankTypeSeeder::class,
+            ScheduleStatusSeeder::class,
+            UserSeeder::class,
+            GenerateUserPermissionSeeder::class,
+        ]);
+
+        Artisan::call('app:import-excel');
+        Artisan::call('app:generate-timeline-data');
+    }
+}
