@@ -201,6 +201,7 @@ class PlanificarePersonalController extends Controller
         $endDayMonth = !$request->endString ? now()->endOfWeek() : $request->endString;
 
         $events = $employeeSchedule
+            ->with(['scheduleStatus']) // Add this line to eager load the relationship
             ->whereBetween('date_start', [$startDayMonth, $endDayMonth])
             ->where("employee_id", "=", $request->employeeId)
             ->get();

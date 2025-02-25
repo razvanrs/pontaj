@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Data;
-
 use App\Models\DayLimit;
 use App\Models\EmployeeSchedule;
 use Carbon\Carbon;
@@ -29,12 +27,13 @@ class EmployeeScheduleData extends Data
 
     public static function fromModel(EmployeeSchedule $employeeSchedule): self
     {
-
         $totalMinutes = $employeeSchedule->total_minutes;
         $totalHours = $totalMinutes / 60; // Convert minutes to hours
         // Round the total hours to two decimal places
-
         $totalHours = round($totalHours, 2);
+        
+        // Get color from the schedule status - this is the key change
+        $color = $employeeSchedule->scheduleStatus->color ?? '#ff0000';
         
         return new self(
             $employeeSchedule->id,
@@ -47,8 +46,8 @@ class EmployeeScheduleData extends Data
             $employeeSchedule->date_start->format("Y-m-d H:i:s"),
             $employeeSchedule->date_finish->format("Y-m-d H:i:s"),
             $employeeSchedule->total_minutes,
-            '#4e80ee',
-            '#4e80ee',
+            $color, // Use the dynamic color instead of hardcoded value
+            $color, // Use the dynamic color instead of hardcoded value
             false,
             ($employeeSchedule->display_code ? $employeeSchedule->display_code : $employeeSchedule->scheduleStatus->name) . " (" . $totalHours . " ore)", //this is how the Fullcalendar.io displays data
         );

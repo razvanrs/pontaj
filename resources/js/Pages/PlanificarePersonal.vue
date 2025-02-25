@@ -90,7 +90,7 @@
                             <div class="flex space-x-5">
                                 <div v-for="scheduleStatus in scheduleStatuses" :key="scheduleStatus.id">
                                     <div class="flex space-x-1.5 items-center">
-                                        <div :class="`${scheduleStatus.background} h-3.5 w-3.5 rounded-full`" />
+                                        <div class="h-3.5 w-3.5 rounded-full" :style="{ backgroundColor: scheduleStatus.color }"></div>
                                         <p class="text-sm"> {{ scheduleStatus.code }} </p>
                                     </div>
                                 </div>
