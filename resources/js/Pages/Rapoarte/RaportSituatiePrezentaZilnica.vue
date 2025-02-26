@@ -91,9 +91,8 @@
                     <div v-else class="pt-8 flow-root">
                         <div class="flex flex-col space-y-1.5">
                             <div class="font-semibold">
-                                Situația prezenței la program a personalului din cadrul
-                                {{ selectedBusinessUnitGroup?.name || '...' }}
-                                în data de {{ formatDisplayDate(selectedDate) }}
+                                Situația prezenței la program a personalului în data de
+                                {{ formatDisplayDate(selectedDate) }} - {{ selectedBusinessUnitGroup?.name || '...' }}
                             </div>
 
                             <ul class="list-disc list-inside space-y-1.5 pt-3">
@@ -131,15 +130,16 @@
         </main>
 
         <!-- Print version -->
-        <div class="hidden print:block">
-            <h2 class="text-center font-bold text-lg uppercase max-w-3xl mx-auto mt-10">
-                Situația prezenței la program a personalului din cadrul
-                {{ selectedBusinessUnitGroup?.name || '...' }}
-                în data de {{ formatDisplayDate(selectedDate) }}
+        <div class="hidden print:block font-times">
+            <h2 class="text-center text-lg uppercase max-w-3xl mx-auto mt-10">
+                <span class="underline font-bold">{{ selectedBusinessUnitGroup?.name || '...' }}</span>
+                <br>
+                Situația prezenței la program a personalului în data de
+                {{ formatDisplayDate(selectedDate) }}
             </h2>
 
             <div class="flex justify-center">
-                <ul class="list-disc list-inside space-y-1.5 pt-12">
+                <ul class="list-disc list-inside space-y-1.5 pt-14">
                     <li>Efectiv control - <span class="font-semibold">{{ stats.total || 0 }}</span></li>
                     <li>Efectiv prezent - <span class="font-semibold">{{ stats.present || 0 }}</span></li>
                     <li>Răspândiri - <span class="font-semibold">{{ stats.onDuty || 0 }}</span></li>
@@ -147,7 +147,7 @@
             </div>
 
             <div class="flex justify-center">
-                <div class="grid grid-cols-2 gap-20 mt-20">
+                <div class="grid grid-cols-2 gap-20 mt-16">
                     <div>
                         <h3 class="font-semibold underline">Prezenți</h3>
                         <ul class="list-decimal list-inside space-y-1.5 mt-3">
@@ -162,7 +162,7 @@
                         <ul class="list-decimal list-inside space-y-1.5 mt-3">
                             <li v-for="(employee, index) in onDutyEmployees" :key="index">
                                 {{ employee.military_rank.abbreviation }} {{ employee.name }} -
-                                <span class="text-gray-600 text-sm">({{ employee.status }})</span>
+                                <span class="font-semibold">{{ employee.status }}</span>
                             </li>
                         </ul>
                     </div>
@@ -171,9 +171,9 @@
 
             <div class="flex justify-center px-10 mt-20">
                 <div class="text-center">
-                    <div class="font-bold uppercase">Î./Șef birou,</div>
-                    <div class="text-xs italic">Comisar-șef de poliție</div>
-                    <div class="font-bold uppercase mt-2">Mihalea Andrei</div>
+                    <div class="font-bold text-lg uppercase">Șef birou,</div>
+                    <div class="mt-0 italic">Comisar-șef de poliție</div>
+                    <div class="font-bold text-lg uppercase mt-4">Mihalea Andrei</div>
                 </div>
             </div>
         </div>

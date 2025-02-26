@@ -46,8 +46,8 @@ class EmployeeScheduleData extends Data
             $employeeSchedule->date_start->format("Y-m-d H:i:s"),
             $employeeSchedule->date_finish->format("Y-m-d H:i:s"),
             $employeeSchedule->total_minutes,
-            $color, // Use the dynamic color instead of hardcoded value
-            $color, // Use the dynamic color instead of hardcoded value
+            $color,
+            $color,
             false,
             ($employeeSchedule->display_code ? $employeeSchedule->display_code : $employeeSchedule->scheduleStatus->name) . " (" . $totalHours . " ore)", //this is how the Fullcalendar.io displays data
         );

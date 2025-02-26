@@ -45,8 +45,16 @@ Route::middleware([
 
     // RAPOARTE
     Route::get('/raport-situatie-prezenta-zilnica', [RaportSituatiePrezentaZilnicaController::class, 'index'])->name('raport-situatie-prezenta-zilnica');
+    Route::get('/rapoarte/prezenta-zilnica/data', [RaportSituatiePrezentaZilnicaController::class, 'getDailyData'])->name('rapoarte.prezenta-zilnica.data');
     Route::get('/raport-situatie-prezenta-lunara', [RaportSituatiePrezentaLunaraController::class, 'index'])->name('raport-situatie-prezenta-lunara');
     Route::get('/raport-planificare-profesori', [RaportPlanificareProfesoriController::class, 'index'])->name('raport-planificare-profesori');
+
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/raport-situatie-prezenta-lunara', [RaportSituatiePrezentaLunaraController::class, 'index'])
+            ->name('raport-situatie-prezenta-lunara');
+        Route::get('/rapoarte/prezenta-lunara/data', [RaportSituatiePrezentaLunaraController::class, 'getMonthlyData'])
+            ->name('rapoarte.prezenta-lunara.data');
+    });
 
     // TEACHER SCHEDULE
     Route::get('/planificare-profesori', [PlanificareProfesoriController::class, 'index'])->name('teacherSchedule');
@@ -65,13 +73,6 @@ Route::middleware([
     Route::post('/employees/by-business-unit-group', [PlanificarePersonalController::class, 'getEmployeesByBusinessUnitGroup'])->name('lists.employees');
     Route::post('/employee/events', [PlanificarePersonalController::class, 'getEvents'])->name('employee.getEvents');
     Route::post('/employee/events/{id}', [PlanificarePersonalController::class, 'getEvent'])->name('employee.getEvent');
-    Route::get('/rapoarte/prezenta-zilnica/data', [RaportSituatiePrezentaZilnicaController::class, 'getDailyData'])->name('rapoarte.prezenta-zilnica.data');
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/raport-situatie-prezenta-lunara', [RaportSituatiePrezentaLunaraController::class, 'index'])
-            ->name('raport-situatie-prezenta-lunara');
-        Route::get('/rapoarte/prezenta-lunara/data', [RaportSituatiePrezentaLunaraController::class, 'getMonthlyData'])
-            ->name('rapoarte.prezenta-lunara.data');
-    });
 
     // CARNET ABATERI ELEVI
     Route::get('/carnet-abateri-elevi', [CarnetAbateriEleviController::class, 'index'])->name('sanction');

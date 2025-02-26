@@ -175,7 +175,7 @@
                                         />
                                     </div>
 
-                                    <div class="sm:col-span-2 flex items-center">
+                                    <div class="sm:col-span-2 flex items-center" v-if="!isEditMode">
                                         <Switch
                                             v-model="choosePeriod"
                                             :class="choosePeriod ? 'bg-blue-600' : 'bg-gray-300'"
@@ -524,9 +524,17 @@ function submitBulkSchedule () {
         return
     }
 
+    if (!form.scheduleStatus) {
+        toast.error('Vă rugăm să selectați o situație de prezență!', {
+            timeout: 2000,
+            position: 'bottom-right',
+        })
+        return
+    }
+
     // Prepare bulk schedule data
     const bulkScheduleData = {
-        formAction: 'bulk', // Add this to distinguish bulk action
+        formAction: 'bulk',
         scheduleStatus: form.scheduleStatus,
         employee: filterEmployee.value,
         startDate: periodDates.value[0].toLocaleString('ro-RO', { timeZoneName: 'short' }),
@@ -534,10 +542,10 @@ function submitBulkSchedule () {
         displayCode: form.displayCode,
     }
 
-    // Send request to new backend endpoint
+    // Send request to backend endpoint
     axios.post('/adauga-activitate-personal-bulk', bulkScheduleData)
         .then(response => {
-            toast.success('Programare în masă realizată cu succes!', {
+            toast.success(`Programare realizată cu succes pentru ${response.data.created_schedules} zile!`, {
                 timeout: 2000,
                 position: 'bottom-right',
             })
@@ -553,10 +561,28 @@ function submitBulkSchedule () {
             refresh() // Refresh calendar events
         })
         .catch(error => {
-            toast.error('Eroare la programarea în masă: ' + (error.response?.data?.message || error.message), {
-                timeout: 2000,
-                position: 'bottom-right',
-            })
+            if (error.response && error.response.data.conflicting_dates) {
+                const conflictDates = error.response.data.conflicting_dates
+                let errorMessage = ''
+
+                if (conflictDates.length === 1) {
+                    // Singular case - one day with conflict
+                    errorMessage = `Nu se poate programa: există deja un eveniment în data de: ${conflictDates[0]}`
+                } else {
+                    // Plural case - multiple days with conflicts
+                    errorMessage = `Nu se poate programa: există deja evenimente în zilele: ${conflictDates.join(', ')}`
+                }
+
+                toast.error(errorMessage, {
+                    timeout: 5000, // Increase timeout for longer messages
+                    position: 'bottom-right',
+                })
+            } else {
+                toast.error('Eroare la programarea în masă: ' + (error.response?.data?.message || error.message), {
+                    timeout: 2000,
+                    position: 'bottom-right',
+                })
+            }
         })
 }
 

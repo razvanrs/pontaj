@@ -48,8 +48,6 @@ class ScheduleStatus extends Resource
                 ->rules(['required']),
             Text::make('Color')
                 ->rules(['required']),
-            Text::make('Background')
-                ->rules(['required']),
             Text::make('Sel order')
                 ->rules(['required']),
         ];

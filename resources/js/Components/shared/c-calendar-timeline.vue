@@ -56,7 +56,6 @@ export default {
 
                     // Check if we're in month view
                     if (arg.view.type === 'dayGridMonth') {
-                        // For month view - apply background color but keep same content structure
                         return {
                             html: `<div class="calendar-event-content" style="
                     display: flex; 
@@ -74,7 +73,6 @@ export default {
                 </div>`,
                         }
                     } else {
-                        // Original code for week view - completely untouched
                         return {
                             html: `<div class="calendar-event-content" style="display: flex; flex-direction: column; align-items: start; padding: 6px; line-height:1.1rem;">
                     <span style="">${start} - ${end}</span>
@@ -94,9 +92,6 @@ export default {
     },
     methods: {
         refresh: function (event) {
-            // console.log('refresh data')
-            // console.log('Events: ')
-            // console.log(this.events)
             this.reset()
             this.loadData()
         },
@@ -108,18 +103,8 @@ export default {
         },
         loadData: function () {
             this.$nextTick(function () {
-                // Code that will run only after the
-                // entire view has been rendered
-                // console.log('Calendar loaded ...')
-                // console.log('Events: ')
-                // console.log(this.events)
-                // console.log(this.$refs.fullCalendar.calendar)
-
                 const _this = this
                 this.events.forEach(function (event, index) {
-                    // console.log(event)
-                    // event.backgroundColor = '#f87171'
-                    // event.borderColor = '#f87171'
                     console.log(event)
                     _this.$refs.fullCalendar.calendar.addEvent(event)
                 })

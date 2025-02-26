@@ -49,7 +49,7 @@
                                 dateFormat="mm/yy"
                                 :showIcon="true"
                                 placeholder="Selectează luna"
-                                class="w-full md:w-40"
+                                class="w-full md:w-44"
 
                             />
 
@@ -184,7 +184,7 @@
         </main>
 
         <!-- PRINT TABLE -->
-        <div class="hidden print:block">
+        <div class="hidden print:block font-times">
             <!-- Header Section -->
             <div class="flex justify-between mb-8">
                 <!-- Left Header -->
@@ -192,7 +192,7 @@
                     <div>Ministerul Afacerilor Interne</div>
                     <div>Inspectoratul General al Poliției Române</div>
                     <div>Școala de Agenți de Poliție „Vasile Lascăr" Câmpina</div>
-                    <div>Biroul Comunicații și Informatică</div>
+                    <div>{{ selectedBusinessUnitGroup?.name || '...' }}</div>
                 </div>
 
                 <!-- Right Header -->
@@ -206,18 +206,17 @@
             <!-- Approval Section -->
             <div class="flex justify-end mr-60 mt-5">
                 <div class="text-xs text-center">
-                    <div class="font-bold uppercase">Aprob</div>
-                    <div class="font-bold uppercase">Directorul școlii</div>
-                    <div class="text-[10px] italic">Chestor de poliție</div>
-                    <div class="mt-2">Dr. <span class="font-bold">TACHE VASILE</span></div>
+                    <div class="font-bold text-base uppercase">Aprob</div>
+                    <div class="font-bold text-base uppercase">Directorul școlii</div>
+                    <div class="mt-0 text-base italic">Chestor de poliție</div>
+                    <div class="font-bold text-base uppercase mt-3">Dr. <span class="font-bold">TACHE VASILE</span></div>
                 </div>
             </div>
 
             <!-- Title -->
-            <h2 class="text-center font-bold text-lg uppercase max-w-3xl mx-auto mt-10">
-                Situația prezenței la program a personalului
-                {{ selectedBusinessUnitGroup?.name || '...' }}
-                în luna {{ date.toLocaleString('ro-RO', { month: 'long' }) }}
+            <h2 class="text-center text-lg uppercase max-w-3xl mx-auto mt-10">
+                <span class="underline font-bold">{{ selectedBusinessUnitGroup?.name || '...' }}</span><br>
+                Situația prezenței la program a personalului în luna {{ date.toLocaleString('ro-RO', { month: 'long' }) }}
                 {{ date.getFullYear() }}
             </h2>
 
@@ -313,18 +312,18 @@
 
             <!-- Signatures -->
             <div class="flex justify-between px-10 mt-12">
-                <div class="text-xs text-center">
-                    <div class="font-bold uppercase">Întocmit</div>
-                    <div class="font-bold uppercase">Agent II</div>
-                    <div class="text-[10px] italic">Agent-șef principal de poliție</div>
-                    <div class="font-bold uppercase mt-2">ANGHEL BOGDAN</div>
+                <div class="text-center">
+                    <div class="font-bold text-base uppercase">Întocmit</div>
+                    <div class="font-bold text-base uppercase">Agent II</div>
+                    <div class="mt-0 text-base italic">Agent-șef principal de poliție</div>
+                    <div class="font-bold text-base uppercase mt-3">ANGHEL BOGDAN</div>
                 </div>
 
-                <div class="text-xs text-center">
-                    <div class="font-bold uppercase">De acord</div>
-                    <div class="font-bold uppercase">Șef birou</div>
-                    <div class="text-[10px] italic">Comisar-șef de poliție</div>
-                    <div class="font-bold uppercase mt-2">MIHALEA ANDREI</div>
+                <div class="text-center">
+                    <div class="font-bold text-base uppercase">De acord</div>
+                    <div class="font-bold text-base uppercase">Șef birou</div>
+                    <div class="mt-0 text-base italic">Comisar-șef de poliție</div>
+                    <div class="font-bold text-base uppercase mt-3">Mihalea Andrei</div>
                 </div>
             </div>
         </div>

@@ -180,65 +180,105 @@ class PlanificarePersonalController extends Controller
             'startDate' => ['required', 'date'],
             'endDate' => ['required', 'date', 'after_or_equal:startDate'],
         ]);
-
+    
         if ($validator->fails()) {
             return response()->json([
                 'errors' => $validator->errors()
             ], 422);
         }
-
+    
         // Parse dates
         $startDate = Carbon::parse($request->startDate);
         $endDate = Carbon::parse($request->endDate);
-
-        // Prepare to track created schedules
-        $createdSchedules = [];
-
-        // Iterate through each day in the range
-        while ($startDate->lte($endDate)) {
-            // Skip weekends if needed
-            if (!$startDate->isWeekend()) {
-                // Set default work hours
-                $dayStart = $startDate->copy()->setHour(8)->setMinute(0);
-                $dayEnd = $startDate->copy()->setHour(16)->setMinute(0);
-
-                // Check for overlapping events
-                $overlappingEvents = EmployeeSchedule::where('employee_id', $request->employee['id'])
-                    ->where(function ($query) use ($dayStart, $dayEnd) {
-                        $query->where(function ($q) use ($dayStart, $dayEnd) {
-                            $q->where('date_start', '<=', $dayStart)
-                            ->where('date_finish', '>', $dayStart);
-                        })
-                        ->orWhere(function ($q) use ($dayStart, $dayEnd) {
-                            $q->where('date_start', '<', $dayEnd)
-                            ->where('date_finish', '>=', $dayEnd);
-                        });
+        
+        // First, check if ANY day in the range has an existing event
+        $conflictingDates = [];
+        $currentDate = $startDate->copy();
+        
+        while ($currentDate->lte($endDate)) {
+            // Removed weekend check to include all days
+            $dayStart = $currentDate->copy()->setHour(8)->setMinute(0);
+            $dayEnd = $currentDate->copy()->setHour(16)->setMinute(0);
+    
+            // Check for overlapping events
+            $overlappingEvents = EmployeeSchedule::where('employee_id', $request->employee['id'])
+                ->where(function ($query) use ($dayStart, $dayEnd) {
+                    $query->where(function ($q) use ($dayStart, $dayEnd) {
+                        // Existing event starts during the new event time
+                        $q->where('date_start', '>=', $dayStart)
+                          ->where('date_start', '<', $dayEnd);
                     })
-                    ->exists();
-
-                if (!$overlappingEvents) {
-                    $employeeSchedule = new EmployeeSchedule();
-                    $employeeSchedule->schedule_status_id = $request->scheduleStatus['id'];
-                    $employeeSchedule->employee_id = $request->employee['id'];
-                    $employeeSchedule->year_id = Year::where('code', $dayStart->year)->first()->id;
-                    $employeeSchedule->week_id = Week::where('code', $dayStart->weekOfYear)->first()->id;
-                    $employeeSchedule->day_id = Day::where('code', $dayStart->day)->first()->id;
-                    $employeeSchedule->date_start = $dayStart->format("Y-m-d H:i:s");
-                    $employeeSchedule->date_finish = $dayEnd->format("Y-m-d H:i:s");
-                    $employeeSchedule->total_minutes = $dayEnd->diffInMinutes($dayStart);
-                    $employeeSchedule->display_code = $request->displayCode;
-                    $employeeSchedule->save();
-
-                    $createdSchedules[] = $employeeSchedule;
-                }
+                    ->orWhere(function ($q) use ($dayStart, $dayEnd) {
+                        // Existing event ends during the new event time
+                        $q->where('date_finish', '>', $dayStart)
+                          ->where('date_finish', '<=', $dayEnd);
+                    })
+                    ->orWhere(function ($q) use ($dayStart, $dayEnd) {
+                        // Existing event completely contains the new event
+                        $q->where('date_start', '<=', $dayStart)
+                          ->where('date_finish', '>=', $dayEnd);
+                    });
+                })
+                ->get();
+    
+            if ($overlappingEvents->count() > 0) {
+                // Store date in dd/mm/yyyy format for the error message
+                $conflictingDates[] = $currentDate->format('d/m/Y');
             }
-
-            // Move to next day
-            $startDate->addDay();
+            $currentDate->addDay();
         }
-
+    
+        // If we found conflicting dates, return an error with the list of dates
+        if (count($conflictingDates) > 0) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Există evenimente deja planificate în datele selectate',
+                'conflicting_dates' => $conflictingDates
+            ], 422);
+        }
+    
+        // If no conflicts, proceed with creating the schedules
+        $createdSchedules = [];
+        $currentDate = $startDate->copy();
+    
+        while ($currentDate->lte($endDate)) {
+            // Removed weekend check to include all days
+            $dayStart = $currentDate->copy()->setHour(8)->setMinute(0);
+            $dayEnd = $currentDate->copy()->setHour(16)->setMinute(0);
+    
+            // Create schedule entry
+            $employeeSchedule = new EmployeeSchedule();
+            $employeeSchedule->schedule_status_id = $request->scheduleStatus['id'];
+            $employeeSchedule->employee_id = $request->employee['id'];
+            
+            // Get the appropriate year, week, and day IDs
+            $year = Year::where('code', $dayStart->year)->first();
+            $week = Week::where('code', $dayStart->weekOfYear)->first();
+            $day = Day::where('code', $dayStart->day)->first();
+            
+            if (!$year || !$week || !$day) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Nu s-au putut găsi referințele pentru an, săptămână sau zi'
+                ], 422);
+            }
+            
+            $employeeSchedule->year_id = $year->id;
+            $employeeSchedule->week_id = $week->id;
+            $employeeSchedule->day_id = $day->id;
+            $employeeSchedule->date_start = $dayStart->format("Y-m-d H:i:s");
+            $employeeSchedule->date_finish = $dayEnd->format("Y-m-d H:i:s");
+            $employeeSchedule->total_minutes = $dayEnd->diffInMinutes($dayStart);
+            $employeeSchedule->display_code = $request->displayCode;
+            $employeeSchedule->save();
+    
+            $createdSchedules[] = $employeeSchedule;
+            $currentDate->addDay();
+        }
+    
         return response()->json([
-            'message' => 'Bulk scheduling successful',
+            'success' => true,
+            'message' => 'Programare realizată cu succes',
             'created_schedules' => count($createdSchedules)
         ]);
     }
