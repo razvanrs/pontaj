@@ -95,7 +95,7 @@ class RaportSituatiePrezentaLunaraController extends Controller
             $endDate = Carbon::parse($request->end_date)->endOfDay();
     
             // Get all schedules for the month
-            $query = EmployeeSchedule::with(['employee.businessUnitEmployees', 'scheduleStatus'])
+            $query = EmployeeSchedule::with(['employee.businessUnitEmployees', 'employee.militaryRank', 'scheduleStatus'])
             ->where(function($q) use ($startDate, $endDate) {
                 $q->whereBetween('date_start', [$startDate, $endDate])
                   ->orWhereBetween('date_finish', [$startDate, $endDate]);
@@ -135,19 +135,28 @@ class RaportSituatiePrezentaLunaraController extends Controller
     
         foreach ($employeeSchedules as $employeeId => $employeeData) {
             $employee = $employeeData->first()->employee;
+            
+            // Include military rank information
+            $militaryRank = $employee->militaryRank ? $employee->militaryRank->abbreviation : '';
+            
             $monthData = [
                 'name' => $employee->full_name,
+                'military_rank' => $militaryRank, // Add military rank
                 'compartment_id' => $employee->compartment_id,
                 'hours' => array_fill(1, $date->daysInMonth, 0),
                 'totalHours' => 0,
                 'spor' => 0,
-                'details' => []
+                'details' => [],
+                'display_codes' => [],
             ];
     
             // Status tracking arrays
             $statusSummary = [];
             $daySpecificStatuses = [];
             $daySpecificCodes = ['R', 'LS', 'R*'];
+            
+            // Track R and R* days to handle the special case
+            $recoveryDays = [];
     
             $schedulesByDay = $employeeData->groupBy(function($schedule) {
                 return $schedule->date_start->format('d');
@@ -161,6 +170,9 @@ class RaportSituatiePrezentaLunaraController extends Controller
                 $fullDate = Carbon::createFromFormat('Y-m-d', $date->format('Y') . '-' . $date->format('m') . '-' . str_pad($day, 2, '0', STR_PAD_LEFT));
                 $isWeekend = $fullDate->isWeekend();
     
+                // Track status codes for this day
+                $dayStatusCodes = [];
+    
                 if ($daySchedules->count() > 1) {
                     foreach ($daySchedules as $schedule) {
                         $hours = round($schedule->total_minutes / 60);
@@ -171,17 +183,34 @@ class RaportSituatiePrezentaLunaraController extends Controller
                             $dayShifts[] = $shiftDisplay;
                             $monthData['totalHours'] += $hours;
                             $dailySporHours += $hours;
+                            
+                            // Store display code if available
+                            if ($schedule->display_code) {
+                                $monthData['display_codes'][$day] = $schedule->display_code;
+                            }
                         } else {
                             $statusCode = $schedule->scheduleStatus->code;
                             $dayShifts[] = $hours . $statusCode;
+                            $dayStatusCodes[] = $statusCode;
                             
                             if (in_array($statusCode, $daySpecificCodes)) {
-                                $daySpecificStatuses[] = $statusCode . sprintf("%02d", $day);
-                            } else if ($statusCode !== 'PREZ') {
-                                if (!isset($statusSummary[$statusCode])) {
-                                    $statusSummary[$statusCode] = 0;
+                                // Don't add directly, we'll process after checking all schedules for the day
+                                if ($statusCode === 'R' || $statusCode === 'R*') {
+                                    if (!isset($recoveryDays[$day])) {
+                                        $recoveryDays[$day] = [];
+                                    }
+                                    $recoveryDays[$day][] = $statusCode;
+                                } else {
+                                    $daySpecificStatuses[] = $statusCode . sprintf("%02d", $day);
                                 }
-                                $statusSummary[$statusCode] += $hours;
+                            } else if ($statusCode !== 'PREZ') {
+                                // Only add to status summary if it's not a weekend day with CO or CM status
+                                if (!($isWeekend && ($statusCode === 'CO' || $statusCode === 'CM'))) {
+                                    if (!isset($statusSummary[$statusCode])) {
+                                        $statusSummary[$statusCode] = 0;
+                                    }
+                                    $statusSummary[$statusCode] += $hours;
+                                }
                             }
     
                             if (in_array($statusCode, $sporStatusCodes)) {
@@ -201,11 +230,18 @@ class RaportSituatiePrezentaLunaraController extends Controller
                     $schedule = $daySchedules->first();
                     $hours = round($schedule->total_minutes / 60);
                     $statusCode = $schedule->scheduleStatus->code;
+                    $dayStatusCodes[] = $statusCode;
     
                     if ($schedule->schedule_status_id === 1) {
                         // Use display code if available, otherwise use hours
                         $monthData['hours'][$day] = $schedule->display_code ?: $hours;
                         $monthData['totalHours'] += $hours;
+                        
+                        // Store display code if available
+                        if ($schedule->display_code) {
+                            $monthData['display_codes'][$day] = $schedule->display_code;
+                        }
+                        
                         if (in_array('PREZ', $sporStatusCodes) && !$isWeekend) {
                             $monthData['spor'] += min($hours, $maxDailySpor);
                         }
@@ -213,18 +249,41 @@ class RaportSituatiePrezentaLunaraController extends Controller
                         $monthData['hours'][$day] = $statusCode;
                         
                         if (in_array($statusCode, $daySpecificCodes)) {
-                            $daySpecificStatuses[] = $statusCode . sprintf("%02d", $day);
-                        } else if ($statusCode !== 'PREZ') {
-                            if (!isset($statusSummary[$statusCode])) {
-                                $statusSummary[$statusCode] = 0;
+                            // Don't add directly, we'll process after checking all schedules for the day
+                            if ($statusCode === 'R' || $statusCode === 'R*') {
+                                if (!isset($recoveryDays[$day])) {
+                                    $recoveryDays[$day] = [];
+                                }
+                                $recoveryDays[$day][] = $statusCode;
+                            } else {
+                                $daySpecificStatuses[] = $statusCode . sprintf("%02d", $day);
                             }
-                            $statusSummary[$statusCode] += $hours;
+                        } else if ($statusCode !== 'PREZ') {
+                            // Only add to status summary if it's not a weekend day with CO or CM status
+                            if (!($isWeekend && ($statusCode === 'CO' || $statusCode === 'CM'))) {
+                                if (!isset($statusSummary[$statusCode])) {
+                                    $statusSummary[$statusCode] = 0;
+                                }
+                                $statusSummary[$statusCode] += $hours;
+                            }
                         }
     
                         if (in_array($statusCode, $sporStatusCodes) && !$isWeekend) {
                             $monthData['spor'] += min($hours, $maxDailySpor);
                         }
                     }
+                }
+            }
+            
+            // Process recovery days (R and R*)
+            foreach ($recoveryDays as $day => $codes) {
+                // If we have both R and R* for the same day, only add R
+                if (in_array('R', $codes)) {
+                    $daySpecificStatuses[] = 'R' . sprintf("%02d", $day);
+                } 
+                // If we only have R*, add it
+                else if (in_array('R*', $codes) && !in_array('R', $codes)) {
+                    $daySpecificStatuses[] = 'R*' . sprintf("%02d", $day);
                 }
             }
     
@@ -264,6 +323,11 @@ class RaportSituatiePrezentaLunaraController extends Controller
     
             $processedData[] = $monthData;
         }
+    
+        // Sort the processed data alphabetically by name
+        usort($processedData, function($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
     
         return $processedData;
     }

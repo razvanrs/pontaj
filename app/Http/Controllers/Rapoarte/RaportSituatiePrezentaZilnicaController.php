@@ -46,13 +46,11 @@ class RaportSituatiePrezentaZilnicaController extends Controller
         try {
             $date = Carbon::parse($request->input('date'))->startOfDay();
             $businessUnitGroupId = $request->input('business_unit_group_id');
-
-            // dd($businessUnitGroupId);
     
             // Get all business units in the selected group
             $businessUnitIds = \App\Models\BusinessUnit::where('business_unit_group_id', $businessUnitGroupId)
                 ->pluck('id');
-
+    
             // First, get the total number of employees in the business unit group
             $totalEmployees = Employee::whereHas('businessUnitEmployees', function($q) use ($businessUnitIds) {
                 $q->whereIn('business_unit_id', $businessUnitIds);
@@ -76,12 +74,12 @@ class RaportSituatiePrezentaZilnicaController extends Controller
             $absent = [];
     
             foreach ($schedules as $schedule) {
-
                 if (!$schedule->employee) continue;                
     
                 $employeeData = [
                     'name' => $schedule->employee->full_name,
                     'military_rank' => $schedule->employee->militaryRank ?? '',
+                    'military_rank_id' => $schedule->employee->military_rank_id ?? PHP_INT_MAX,
                     'status' => $schedule->scheduleStatus->code ?? '',
                     'hours' => Carbon::parse($schedule->date_start)->format('H:i') . '-' . 
                               Carbon::parse($schedule->date_finish)->format('H:i')
@@ -101,6 +99,40 @@ class RaportSituatiePrezentaZilnicaController extends Controller
                         break;
                 }
             }
+    
+            // Sort each array by military_rank_id
+            usort($present, function($a, $b) {
+                // Compare military rank IDs
+                if ($a['military_rank_id'] === $b['military_rank_id']) {
+                    // If rank IDs are the same, sort by name
+                    return strcmp($a['name'], $b['name']);
+                }
+                
+                // Sort by military rank ID in ascending order
+                return $a['military_rank_id'] <=> $b['military_rank_id'];
+            });
+    
+            usort($onDuty, function($a, $b) {
+                // Compare military rank IDs
+                if ($a['military_rank_id'] === $b['military_rank_id']) {
+                    // If rank IDs are the same, sort by name
+                    return strcmp($a['name'], $b['name']);
+                }
+                
+                // Sort by military rank ID in ascending order
+                return $a['military_rank_id'] <=> $b['military_rank_id'];
+            });
+    
+            usort($absent, function($a, $b) {
+                // Compare military rank IDs
+                if ($a['military_rank_id'] === $b['military_rank_id']) {
+                    // If rank IDs are the same, sort by name
+                    return strcmp($a['name'], $b['name']);
+                }
+                
+                // Sort by military rank ID in ascending order
+                return $a['military_rank_id'] <=> $b['military_rank_id'];
+            });
     
             // Calculate statistics
             $stats = [

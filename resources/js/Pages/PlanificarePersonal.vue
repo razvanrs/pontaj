@@ -215,7 +215,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="space-y-2 sm:col-span-2">
+                                    <div v-if="form.scheduleStatus && form.scheduleStatus.id === 1 && hours > 480" class="space-y-2 sm:col-span-2">
                                         <InputLabel value="Denumire serviciu (opțional)" />
                                         <div class="flex items-center space-x-2">
                                             <Select
@@ -298,7 +298,7 @@
 <script setup>
 
 import { Head, useForm } from '@inertiajs/vue3'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { ClockIcon } from '@heroicons/vue/24/solid'
 import { ExclamationCircleIcon, TrashIcon } from '@heroicons/vue/24/outline'
@@ -751,6 +751,12 @@ const datesSetEvent = (event) => {
     }
     refresh(event.eventData.startStr, event.eventData.endStr)
 }
+
+watch([() => form.scheduleStatus, hours], ([newStatus, newHours]) => {
+    if ((newStatus?.id !== 1 || newHours <= 480) && form.displayCode) {
+        form.displayCode = null
+    }
+})
 
 </script>
 
