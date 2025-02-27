@@ -147,10 +147,10 @@
             </div>
 
             <div class="flex justify-center">
-                <div class="grid grid-cols-2 gap-20 mt-16">
+                <div class="grid grid-cols-2 gap-16 mt-16">
                     <div>
                         <h3 class="font-semibold underline">Prezenți</h3>
-                        <ul class="list-decimal list-inside space-y-1.5 mt-3">
+                        <ul class="list-decimal list-inside whitespace-nowrap space-y-1.5 mt-3">
                             <li v-for="(employee, index) in presentEmployees" :key="index">
                                 {{ employee.military_rank.abbreviation }} {{ employee.name }}
                             </li>
@@ -159,7 +159,7 @@
 
                     <div>
                         <h3 class="font-semibold underline">Răspândiri</h3>
-                        <ul class="list-decimal list-inside space-y-1.5 mt-3">
+                        <ul class="list-decimal list-inside whitespace-nowrap space-y-1.5 mt-3">
                             <li v-for="(employee, index) in absentEmployees" :key="index">
                                 {{ employee.military_rank.abbreviation }} {{ employee.name }} -
                                 <span class="font-semibold">{{ employee.status.replace('*', '') }}</span>

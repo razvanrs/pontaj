@@ -65,53 +65,102 @@ class RaportSituatiePrezentaZilnicaController extends Controller
     
             $schedules = $query->get();
     
+            // Group schedules by employee ID
+            $employeeSchedules = $schedules->groupBy('employee_id');
+            
             // Initialize arrays
             $present = [];
             $absent = [];
     
-            foreach ($schedules as $schedule) {
-                if (!$schedule->employee) continue;                
-    
-                $employeeData = [
-                    'name' => $schedule->employee->full_name,
-                    'military_rank' => $schedule->employee->militaryRank ?? '',
-                    'military_rank_id' => $schedule->employee->military_rank_id ?? PHP_INT_MAX,
-                    'status' => $schedule->scheduleStatus->code ?? '',
-                    'hours' => Carbon::parse($schedule->date_start)->format('H:i') . '-' . 
-                              Carbon::parse($schedule->date_finish)->format('H:i')
-                ];
-    
-                // Sort based on schedule status
-                switch ($schedule->schedule_status_id) {
-                    case 1: // Present
+            foreach ($employeeSchedules as $employeeId => $employeeRecords) {
+                $employee = $employeeRecords->first()->employee;
+                if (!$employee) continue;
+                
+                // Check for R or R* status records
+                $rStatusRecords = $employeeRecords->filter(function($schedule) {
+                    return $schedule->scheduleStatus && 
+                           ($schedule->scheduleStatus->code === 'R' || 
+                            $schedule->scheduleStatus->code === 'R*');
+                });
+                
+                // Check for present records
+                $presentRecords = $employeeRecords->filter(function($schedule) {
+                    return $schedule->schedule_status_id === 1;
+                });
+                
+                // Check for other absence records (not R or R*)
+                $otherAbsenceRecords = $employeeRecords->filter(function($schedule) {
+                    return $schedule->schedule_status_id !== 1 && 
+                           $schedule->scheduleStatus && 
+                           $schedule->scheduleStatus->code !== 'R' && 
+                           $schedule->scheduleStatus->code !== 'R*';
+                });
+                
+                if ($rStatusRecords->isNotEmpty()) {
+                    // Employee has R or R* status
+                    
+                    // Special case: Show time interval only if both present and R/R* on the same day
+                    $timeIntervalString = '';
+                    if ($presentRecords->isNotEmpty()) {
+                        // Format time interval for R status records only when also present that day
+                        $timeIntervals = [];
+                        foreach ($rStatusRecords as $schedule) {
+                            $timeIntervals[] = Carbon::parse($schedule->date_start)->format('H:i') . '-' . 
+                                              Carbon::parse($schedule->date_finish)->format('H:i');
+                        }
+                        
+                        $timeIntervalString = ' (' . implode(', ', $timeIntervals) . ')';
+                    }
+                    
+                    $employeeData = [
+                        'name' => $employee->full_name,
+                        'military_rank' => $employee->militaryRank ?? '',
+                        'military_rank_id' => $employee->military_rank_id ?? PHP_INT_MAX,
+                        'status' => ($rStatusRecords->first()->scheduleStatus->code ?? '') . $timeIntervalString,
+                    ];
+                    
+                    $absent[] = $employeeData;
+                } else {
+                    // Regular handling for other cases
+                    
+                    // Add to present list if has present records
+                    if ($presentRecords->isNotEmpty()) {
+                        $employeeData = [
+                            'name' => $employee->full_name,
+                            'military_rank' => $employee->militaryRank ?? '',
+                            'military_rank_id' => $employee->military_rank_id ?? PHP_INT_MAX,
+                            'status' => 'PREZ',
+                        ];
+                        
                         $present[] = $employeeData;
-                        break;
-                    default:
+                    }
+                    
+                    // Add to absent list if has other absence records
+                    if ($otherAbsenceRecords->isNotEmpty()) {
+                        $employeeData = [
+                            'name' => $employee->full_name,
+                            'military_rank' => $employee->militaryRank ?? '',
+                            'military_rank_id' => $employee->military_rank_id ?? PHP_INT_MAX,
+                            'status' => $otherAbsenceRecords->first()->scheduleStatus->code ?? '',
+                        ];
+                        
                         $absent[] = $employeeData;
-                        break;
+                    }
                 }
             }
     
-            // Sort each array by military_rank_id
+            // Sort each array by military_rank_id and then by name
             usort($present, function($a, $b) {
-                // Compare military rank IDs
                 if ($a['military_rank_id'] === $b['military_rank_id']) {
-                    // If rank IDs are the same, sort by name
                     return strcmp($a['name'], $b['name']);
                 }
-                
-                // Sort by military rank ID in ascending order
                 return $a['military_rank_id'] <=> $b['military_rank_id'];
             });
-        
+            
             usort($absent, function($a, $b) {
-                // Compare military rank IDs
                 if ($a['military_rank_id'] === $b['military_rank_id']) {
-                    // If rank IDs are the same, sort by name
                     return strcmp($a['name'], $b['name']);
                 }
-                
-                // Sort by military rank ID in ascending order
                 return $a['military_rank_id'] <=> $b['military_rank_id'];
             });
     
