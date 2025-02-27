@@ -50,7 +50,7 @@
 
                             <button
                                 class="bg-brand hover:opacity-90 text-white uppercase text-sm font-medium rounded-md px-5 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                                :disabled="!selectedBusinessUnitGroup || loading || (!presentEmployees.length && !onDutyEmployees.length)"
+                                :disabled="!selectedBusinessUnitGroup || loading || (!presentEmployees.length && !absentEmployees.length)"
                                 @click="printTable">
                                 Printează
                             </button>
@@ -77,7 +77,7 @@
                     </div>
 
                     <!-- Empty State -->
-                    <div v-else-if="!presentEmployees.length && !onDutyEmployees.length" class="flex justify-center items-center h-[calc(100vh-12rem)]">
+                    <div v-else-if="!presentEmployees.length && !absentEmployees.length" class="flex justify-center items-center h-[calc(100vh-12rem)]">
                         <div class="text-center">
                             <img :src="'/images/no-results.png'" class="w-64 mx-auto">
                             <div class="flex flex-col mt-3">
@@ -98,7 +98,7 @@
                             <ul class="list-disc list-inside space-y-1.5 pt-3">
                                 <li>Efectiv control - <span class="font-semibold">{{ stats.total || 0 }}</span></li>
                                 <li>Efectiv prezent - <span class="font-semibold">{{ stats.present || 0 }}</span></li>
-                                <li>Răspândiri - <span class="font-semibold">{{ stats.onDuty || 0 }}</span></li>
+                                <li>Răspândiri - <span class="font-semibold">{{ stats.absent || 0 }}</span></li>
                             </ul>
                         </div>
 
@@ -113,13 +113,13 @@
                                 </ul>
                             </div>
 
-                            <!-- On Duty Employees -->
+                            <!-- Absent Employees -->
                             <div>
                                 <h3 class="font-semibold underline">Răspândiri</h3>
                                 <ul class="list-decimal list-inside space-y-1.5 mt-3">
-                                    <li v-for="(employee, index) in onDutyEmployees" :key="index">
+                                    <li v-for="(employee, index) in absentEmployees" :key="index">
                                         {{ employee.military_rank.abbreviation }} {{ employee.name }} -
-                                        <span class="font-semibold">{{ employee.status }}</span>
+                                        <span class="font-semibold">{{ employee.status.replace('*', '') }}</span>
                                     </li>
                                 </ul>
                             </div>
@@ -142,7 +142,7 @@
                 <ul class="list-disc list-inside space-y-1.5 pt-14">
                     <li>Efectiv control - <span class="font-semibold">{{ stats.total || 0 }}</span></li>
                     <li>Efectiv prezent - <span class="font-semibold">{{ stats.present || 0 }}</span></li>
-                    <li>Răspândiri - <span class="font-semibold">{{ stats.onDuty || 0 }}</span></li>
+                    <li>Răspândiri - <span class="font-semibold">{{ stats.absent || 0 }}</span></li>
                 </ul>
             </div>
 
@@ -160,9 +160,9 @@
                     <div>
                         <h3 class="font-semibold underline">Răspândiri</h3>
                         <ul class="list-decimal list-inside space-y-1.5 mt-3">
-                            <li v-for="(employee, index) in onDutyEmployees" :key="index">
+                            <li v-for="(employee, index) in absentEmployees" :key="index">
                                 {{ employee.military_rank.abbreviation }} {{ employee.name }} -
-                                <span class="font-semibold">{{ employee.status }}</span>
+                                <span class="font-semibold">{{ employee.status.replace('*', '') }}</span>
                             </li>
                         </ul>
                     </div>
@@ -207,7 +207,6 @@ const selectedDate = ref(new Date())
 const loading = ref(false)
 const stats = ref({})
 const presentEmployees = ref([])
-const onDutyEmployees = ref([])
 const absentEmployees = ref([])
 
 // Format date for display
@@ -225,9 +224,8 @@ const fetchDailyData = async () => {
     // Don't fetch if no business unit group is selected
     if (!selectedDate.value || !selectedBusinessUnitGroup.value) {
         // Reset all data
-        stats.value = { total: 0, present: 0, onDuty: 0 }
+        stats.value = { total: 0, present: 0, absent: 0 }
         presentEmployees.value = []
-        onDutyEmployees.value = []
         absentEmployees.value = []
         return
     }
@@ -242,18 +240,16 @@ const fetchDailyData = async () => {
         })
 
         // Update all the data
-        stats.value = response.data.stats || { total: 0, present: 0, onDuty: 0 }
+        stats.value = response.data.stats || { total: 0, present: 0, absent: 0 }
         presentEmployees.value = response.data.present || []
-        onDutyEmployees.value = response.data.onDuty || []
         absentEmployees.value = response.data.absent || []
     } catch (error) {
         console.error('Error fetching daily data:', error)
         toast.error('A apărut o eroare la încărcarea datelor')
 
         // Reset data on error
-        stats.value = { total: 0, present: 0, onDuty: 0 }
+        stats.value = { total: 0, present: 0, absent: 0 }
         presentEmployees.value = []
-        onDutyEmployees.value = []
         absentEmployees.value = []
     } finally {
         loading.value = false
@@ -272,7 +268,7 @@ const printTable = () => {
 // Initial data fetch
 onMounted(() => {
     // Initialize with empty state
-    stats.value = { total: 0, present: 0, onDuty: 0 }
+    stats.value = { total: 0, present: 0, absent: 0 }
 })
 </script>
 

@@ -141,7 +141,8 @@ class RaportSituatiePrezentaLunaraController extends Controller
             
             $monthData = [
                 'name' => $employee->full_name,
-                'military_rank' => $militaryRank, // Add military rank
+                'military_rank' => $militaryRank,
+                'military_rank_id' => $employee->military_rank_id,
                 'compartment_id' => $employee->compartment_id,
                 'hours' => array_fill(1, $date->daysInMonth, 0),
                 'totalHours' => 0,
@@ -326,7 +327,18 @@ class RaportSituatiePrezentaLunaraController extends Controller
     
         // Sort the processed data alphabetically by name
         usort($processedData, function($a, $b) {
-            return strcmp($a['name'], $b['name']);
+            // Extract military_rank_id, defaulting to a high number if not set
+            $rankIdA = $a['military_rank_id'] ?? PHP_INT_MAX;
+            $rankIdB = $b['military_rank_id'] ?? PHP_INT_MAX;
+            
+            // Compare military rank IDs
+            if ($rankIdA === $rankIdB) {
+                // If rank IDs are the same, sort by name as a secondary criterion
+                return strcmp($a['name'], $b['name']);
+            }
+            
+            // Sort by military rank ID in ascending order
+            return $rankIdA <=> $rankIdB;
         });
     
         return $processedData;

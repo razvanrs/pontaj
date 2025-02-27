@@ -1,7 +1,5 @@
 <?php
 
-// RaportSituatiePrezentaZilnicaController.php
-
 namespace App\Http\Controllers\Rapoarte;
 
 use App\Http\Controllers\Controller;
@@ -32,10 +30,9 @@ class RaportSituatiePrezentaZilnicaController extends Controller
                 'stats' => [
                     'total' => 0,
                     'present' => 0,
-                    'onDuty' => 0
+                    'absent' => 0
                 ],
                 'presentEmployees' => [],
-                'onDutyEmployees' => [],
                 'absentEmployees' => [],
                 'selectedDate' => now()->format('Y-m-d')
             ]);
@@ -70,7 +67,6 @@ class RaportSituatiePrezentaZilnicaController extends Controller
     
             // Initialize arrays
             $present = [];
-            $onDuty = [];
             $absent = [];
     
             foreach ($schedules as $schedule) {
@@ -90,10 +86,6 @@ class RaportSituatiePrezentaZilnicaController extends Controller
                     case 1: // Present
                         $present[] = $employeeData;
                         break;
-                    case 2: // On duty
-                    case 3: // Special assignment
-                        $onDuty[] = $employeeData;
-                        break;
                     default:
                         $absent[] = $employeeData;
                         break;
@@ -111,18 +103,7 @@ class RaportSituatiePrezentaZilnicaController extends Controller
                 // Sort by military rank ID in ascending order
                 return $a['military_rank_id'] <=> $b['military_rank_id'];
             });
-    
-            usort($onDuty, function($a, $b) {
-                // Compare military rank IDs
-                if ($a['military_rank_id'] === $b['military_rank_id']) {
-                    // If rank IDs are the same, sort by name
-                    return strcmp($a['name'], $b['name']);
-                }
-                
-                // Sort by military rank ID in ascending order
-                return $a['military_rank_id'] <=> $b['military_rank_id'];
-            });
-    
+        
             usort($absent, function($a, $b) {
                 // Compare military rank IDs
                 if ($a['military_rank_id'] === $b['military_rank_id']) {
@@ -138,13 +119,12 @@ class RaportSituatiePrezentaZilnicaController extends Controller
             $stats = [
                 'total' => $totalEmployees,
                 'present' => count($present),
-                'onDuty' => count($onDuty)
+                'absent' => count($absent)
             ];
     
             return response()->json([
                 'stats' => $stats,
                 'present' => $present,
-                'onDuty' => $onDuty,
                 'absent' => $absent
             ]);
     
